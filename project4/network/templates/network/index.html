@@ -25,7 +25,9 @@
   <div class="card mb-3">
     <div class="card-body">
       <h6 class="card-subtitle mb-2 text-muted">
-        <strong>{{ post.author.username }}</strong>
+        <a href="{% url 'profile' post.author.username %}">
+          <strong>{{ post.author.username }}</strong>
+        </a>
       </h6>
       <p class="card-text">{{ post.content }}</p>
       <small class="text-muted">

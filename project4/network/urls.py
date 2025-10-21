@@ -9,4 +9,7 @@ urlpatterns = [
     path("logout", views.logout_view, name="logout"),
     path("register", views.register, name="register"),
     path("new_post", views.new_post, name="new_post"),
+    path("profile/<str:username>", views.profile, name="profile"),
+    path("toggle_follow/<str:username>",
+         views.toggle_follow, name="toggle_follow"),
 ]

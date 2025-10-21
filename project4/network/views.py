@@ -4,8 +4,9 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404
 
-from .models import User, Post
+from .models import User, Post, Follow
 
 
 def index(request):
@@ -70,6 +71,15 @@ def register(request):
 
 @login_required
 def new_post(request):
+    """
+    Create a new post and save it to the database.
+
+    If the content of the post is empty, render the index page with an error message.
+    Otherwise, create a new Post object with the content and the current user as the author.
+    Save the post to the database and redirect to the index page.
+
+    This view is only accessible if the user is logged in.
+    """
     if request.method == "POST":
         content = request.POST.get("content")
         if content.strip() == "":
@@ -81,3 +91,64 @@ def new_post(request):
         return HttpResponseRedirect(reverse("index"))
     else:
         return HttpResponseRedirect(reverse("index"))
+
+
+def profile(request, username):
+    """
+    Renders a profile page for a given user.
+
+    Retrieves the user's posts, followers count, following count, and
+    determines if the current user is following this profile.
+
+    Args:
+        request: The request object.
+        username: The username of the user to render the profile for.
+
+    Returns:
+        A rendered HttpResponse containing the profile information.
+    """
+    profile_user = get_object_or_404(User, username=username)
+    posts = Post.objects.filter(author=profile_user)
+
+    # Followers and following counts
+    followers_count = profile_user.followers.count()
+    following_count = profile_user.following.count()
+
+    # Determine if current user follows this profile
+    is_following = False
+    if request.user.is_authenticated and request.user != profile_user:
+        is_following = Follow.objects.filter(follower=request.user, following=profile_user).exists()
+
+    return render(request, "network/profile.html", {
+        "profile_user": profile_user,
+        "posts": posts,
+        "followers_count": followers_count,
+        "following_count": following_count,
+        "is_following": is_following
+    })
+
+
+@login_required
+def toggle_follow(request, username):
+    """
+    Toggles the follow relation between the current user and the given user.
+
+    Args:
+        request: The request object.
+        username: The username of the user to toggle the follow relation with.
+
+    Returns:
+        A rendered HttpResponse containing the profile information.
+    """
+    profile_user = get_object_or_404(User, username=username)
+    if request.user == profile_user:
+        return HttpResponseRedirect(reverse("profile", args=[username]))
+
+    follow_relation, created = Follow.objects.get_or_create(
+        follower=request.user,
+        following=profile_user
+    )
+    if not created:
+        # Already following -> unfollow
+        follow_relation.delete()
+    return HttpResponseRedirect(reverse("profile", args=[username]))

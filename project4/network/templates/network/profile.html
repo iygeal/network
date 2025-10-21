@@ -1,0 +1,40 @@
+{% extends "network/layout.html" %}
+
+{% block body %}
+<div class="container mt-4">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>{{ profile_user.username }}</h3>
+
+    {% if user.is_authenticated and user != profile_user %}
+      <form action="{% url 'toggle_follow' profile_user.username %}" method="post">
+        {% csrf_token %}
+        {% if is_following %}
+          <button type="submit" class="btn btn-outline-danger btn-sm">Unfollow</button>
+        {% else %}
+          <button type="submit" class="btn btn-outline-primary btn-sm">Follow</button>
+        {% endif %}
+      </form>
+    {% endif %}
+  </div>
+
+  <p><strong>{{ followers_count }}</strong> Followers ·
+     <strong>{{ following_count }}</strong> Following</p>
+
+  <hr>
+
+  {% if posts %}
+    {% for post in posts %}
+    <div class="card mb-3">
+      <div class="card-body">
+        <p class="card-text">{{ post.content }}</p>
+        <small class="text-muted">{{ post.timestamp|date:"M d, Y H:i" }}</small>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p>No posts yet.</p>
+  {% endif %}
+
+</div>
+{% endblock %}
