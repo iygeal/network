@@ -12,15 +12,32 @@
         <div class="form-group">
           <textarea class="form-control" name="content" rows="3" placeholder="What's on your mind today?" required></textarea>
         </div>
-        <button type="submit" class="btn btn-primary mt-2">Post</button>
+        <button type="submit" class="btn btn-primary mt-2">Publish</button>
       </form>
     </div>
   </div>
   {% endif %}
 
-  <!-- Posts will be displayed here later -->
+  <!-- Dsiplay posts -->
   <div id="posts">
-    <p>All posts will appear here soon!</p>
+    {% if posts %}
+  {% for post in posts %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <h6 class="card-subtitle mb-2 text-muted">
+        <strong>{{ post.author.username }}</strong>
+      </h6>
+      <p class="card-text">{{ post.content }}</p>
+      <small class="text-muted">
+        {{ post.timestamp|date:"M d, Y H:i" }} · Likes: {{ post.likes.count }}
+      </small>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  <p>No posts yet.</p>
+{% endif %}
+
   </div>
 
 </div>
