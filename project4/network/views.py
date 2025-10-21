@@ -152,3 +152,17 @@ def toggle_follow(request, username):
         # Already following -> unfollow
         follow_relation.delete()
     return HttpResponseRedirect(reverse("profile", args=[username]))
+
+
+@login_required
+def following(request):
+    # Get all users that the current user follows
+    followed_users = request.user.following.values_list("following", flat=True)
+
+    # Get posts only from those users
+    posts = Post.objects.filter(
+        author__in=followed_users).order_by("-timestamp")
+
+    return render(request, "network/following.html", {
+        "posts": posts
+    })
