@@ -1,5 +1,27 @@
 {% extends "network/layout.html" %}
 
 {% block body %}
-    TODO
+<div class="container mt-4">
+
+  {% if user.is_authenticated %}
+  <div class="card mb-4">
+    <div class="card-body">
+      <h5 class="card-title">New Post</h5>
+      <form action="{% url 'new_post' %}" method="post">
+        {% csrf_token %}
+        <div class="form-group">
+          <textarea class="form-control" name="content" rows="3" placeholder="What's on your mind today?" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary mt-2">Post</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Posts will be displayed here later -->
+  <div id="posts">
+    <p>All posts will appear here soon!</p>
+  </div>
+
+</div>
 {% endblock %}
