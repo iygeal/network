@@ -99,38 +99,48 @@ def new_post(request):
         return HttpResponseRedirect(reverse("index"))
 
 
+@login_required
 def profile(request, username):
     """
-    Renders a profile page for a given user.
+    Displays the profile of the given user, including their posts and follower / following counts.
 
-    Retrieves the user's posts, followers count, following count, and
-    determines if the current user is following this profile.
+    If the current user is not authenticated, redirect to the index page.
+    If the current user is authenticated but not following the given user, render the 'toggle_follow' form.
+    If the current user is authenticated and following the given user, render the 'toggle_follow' form with the 'Unfollow' button.
 
     Args:
         request: The request object.
-        username: The username of the user to render the profile for.
+        username: The username of the user to display the profile of.
 
     Returns:
         A rendered HttpResponse containing the profile information.
     """
     profile_user = get_object_or_404(User, username=username)
-    posts = Post.objects.filter(author=profile_user)
 
-    # Followers and following counts
-    followers_count = profile_user.followers.count()
-    following_count = profile_user.following.count()
+    # All posts by this user (newest first)
+    posts = Post.objects.filter(author=profile_user).order_by("-timestamp")
 
-    # Determine if current user follows this profile
+    # Paginate posts
+    paginator = Paginator(posts, 10)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    # Follower / following counts
+    followers_count = Follow.objects.filter(following=profile_user).count()
+    following_count = Follow.objects.filter(follower=profile_user).count()
+
+    # Check if current user already follows this profile
     is_following = False
     if request.user.is_authenticated and request.user != profile_user:
-        is_following = Follow.objects.filter(follower=request.user, following=profile_user).exists()
+        is_following = Follow.objects.filter(
+            follower=request.user, following=profile_user).exists()
 
     return render(request, "network/profile.html", {
         "profile_user": profile_user,
-        "posts": posts,
         "followers_count": followers_count,
         "following_count": following_count,
-        "is_following": is_following
+        "is_following": is_following,
+        "page_obj": page_obj,
     })
 
 
@@ -162,13 +172,23 @@ def toggle_follow(request, username):
 
 @login_required
 def following(request):
-    # Get all users that the current user follows
-    followed_users = request.user.following.values_list("following", flat=True)
+    # Get all users the current user follows
+    """
+    Displays a feed of posts from all users that the current user follows.
 
-    # Get posts only from those users
-    posts = Post.objects.filter(
-        author__in=followed_users).order_by("-timestamp")
+    Returns:
+        A rendered HttpResponse containing the followed users' posts.
+    """
+    followed_users = Follow.objects.filter(follower=request.user).values_list("following", flat=True)
+
+    # Get posts from those users only
+    posts = Post.objects.filter(author__in=followed_users).order_by("-timestamp")
+
+    # Paginate
+    paginator = Paginator(posts, 10)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
 
     return render(request, "network/following.html", {
-        "posts": posts
+        "page_obj": page_obj
     })
