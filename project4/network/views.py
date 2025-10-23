@@ -1,12 +1,12 @@
 from django.core.paginator import Paginator
 
-from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 import json
 
 from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError
-from django.http import HttpResponse, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseRedirect, HttpResponseBadRequest
+from django.views.decorators.http import require_http_methods
 from django.shortcuts import render
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
@@ -199,44 +199,30 @@ def following(request):
 
 
 @login_required
-@csrf_exempt
+@require_http_methods(["PUT"])
 def edit_post(request, post_id):
-    """
-    Edit a post by its ID.
+    # Parse JSON body
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "error": "Invalid JSON"}, status=400)
 
-    Only the author of the post can edit it, and the request must be a PUT request with a JSON body containing the new content of the post.
+    new_content = data.get("content", "").strip()
+    if new_content == "":
+        return JsonResponse({"success": False, "error": "Content cannot be empty"}, status=400)
 
-    Args:
-        request: The request object.
-        post_id: The ID of the post to edit.
+    try:
+        post = Post.objects.get(pk=post_id)
+    except Post.DoesNotExist:
+        return JsonResponse({"success": False, "error": "Post not found"}, status=404)
 
-    Returns:
-        A rendered JsonResponse containing the new content of the post, or an error message if the request is invalid or the user is not authorized.
-    """
-    if request.method == "PUT":
-        try:
-            data = json.loads(request.body)
-            new_content = data.get("content", "").strip()
-        except json.JSONDecodeError:
-            return JsonResponse({"error": "Invalid JSON"}, status=400)
+    # Security: only author can edit
+    if post.author != request.user:
+        return JsonResponse({"success": False, "error": "Not authorized"}, status=403)
 
-        try:
-            post = Post.objects.get(pk=post_id)
-        except Post.DoesNotExist:
-            return JsonResponse({"error": "Post not found"}, status=404)
+    # Save and return new content
+    post.content = new_content
+    post.save()
 
-        # Security: only author can edit
-        if post.author != request.user:
-            return JsonResponse({"error": "Not authorized"}, status=403)
+    return JsonResponse({"success": True, "new_content": post.content})
 
-        if new_content:
-            post.content = new_content
-            post.save()
-            return JsonResponse({
-                "message": "Post updated successfully",
-                "new_content": post.content
-            })
-        else:
-            return JsonResponse({"error": "Content cannot be empty"}, status=400)
-
-    return JsonResponse({"error": "PUT request required"}, status=400)
