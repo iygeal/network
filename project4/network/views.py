@@ -1,4 +1,9 @@
 from django.core.paginator import Paginator
+
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+import json
+
 from django.contrib.auth import authenticate, login, logout
 from django.db import IntegrityError
 from django.http import HttpResponse, HttpResponseRedirect
@@ -20,7 +25,6 @@ def index(request):
     return render(request, "network/index.html", {
         "page_obj": page_obj
     })
-
 
 
 def login_view(request):
@@ -192,3 +196,47 @@ def following(request):
     return render(request, "network/following.html", {
         "page_obj": page_obj
     })
+
+
+@login_required
+@csrf_exempt
+def edit_post(request, post_id):
+    """
+    Edit a post by its ID.
+
+    Only the author of the post can edit it, and the request must be a PUT request with a JSON body containing the new content of the post.
+
+    Args:
+        request: The request object.
+        post_id: The ID of the post to edit.
+
+    Returns:
+        A rendered JsonResponse containing the new content of the post, or an error message if the request is invalid or the user is not authorized.
+    """
+    if request.method == "PUT":
+        try:
+            data = json.loads(request.body)
+            new_content = data.get("content", "").strip()
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+        try:
+            post = Post.objects.get(pk=post_id)
+        except Post.DoesNotExist:
+            return JsonResponse({"error": "Post not found"}, status=404)
+
+        # Security: only author can edit
+        if post.author != request.user:
+            return JsonResponse({"error": "Not authorized"}, status=403)
+
+        if new_content:
+            post.content = new_content
+            post.save()
+            return JsonResponse({
+                "message": "Post updated successfully",
+                "new_content": post.content
+            })
+        else:
+            return JsonResponse({"error": "Content cannot be empty"}, status=400)
+
+    return JsonResponse({"error": "PUT request required"}, status=400)
