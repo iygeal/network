@@ -1,51 +1,74 @@
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
-const csrftoken = getCookie('csrftoken');
-
 function editPost(postId) {
-    const contentElement = document.getElementById(`post-content-${postId}`);
-    const originalContent = contentElement.innerText;
+  const postContent = document.getElementById(`post-content-${postId}`);
+  const originalText = postContent.innerText.trim();
 
-    contentElement.outerHTML = `
-      <textarea id="edit-area-${postId}" class="form-control mb-2">${originalContent}</textarea>
-      <button class="btn btn-sm btn-success" onclick="savePost(${postId})">Save</button>
-      <button class="btn btn-sm btn-secondary" onclick="cancelEdit(${postId}, '${originalContent.replace(/'/g, "\\'")}')">Cancel</button>
-    `;
-}
+  // Create textarea
+  const textarea = document.createElement('textarea');
+  textarea.className = 'form-control mb-2';
+  textarea.value = originalText;
 
-function cancelEdit(postId, originalContent) {
-    const textarea = document.getElementById(`edit-area-${postId}`);
-    textarea.outerHTML = `<p class="card-text" id="post-content-${postId}">${originalContent}</p>`;
-}
+  // Create Save and Cancel buttons
+  const saveButton = document.createElement('button');
+  saveButton.className = 'btn btn-sm btn-primary me-2';
+  saveButton.innerText = 'Save';
 
-function savePost(postId) {
-    const newContent = document.getElementById(`edit-area-${postId}`).value.trim();
+  const cancelButton = document.createElement('button');
+  cancelButton.className = 'btn btn-sm btn-secondary';
+  cancelButton.innerText = 'Cancel';
 
-    fetch(`/edit_post/${postId}`, {
-        method: "PUT",
-        headers: { "X-CSRFToken": csrftoken },
-        body: JSON.stringify({ content: newContent })
+  // Replace post content with textarea and buttons (side by side)
+  postContent.innerHTML = '';
+  const btnContainer = document.createElement('div');
+  btnContainer.appendChild(saveButton);
+  btnContainer.appendChild(cancelButton);
+  postContent.appendChild(textarea);
+  postContent.appendChild(btnContainer);
+
+  // Handle Save
+  saveButton.onclick = function () {
+    const newContent = textarea.value;
+
+    fetch(`/edit/${postId}`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCookie('csrftoken'),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ content: newContent }),
     })
-    .then(response => response.json())
-    .then(result => {
-        if (result.new_content) {
-            document.getElementById(`edit-area-${postId}`).outerHTML =
-              `<p class="card-text" id="post-content-${postId}">${result.new_content}</p>`;
-        } else if (result.error) {
-            alert(result.error);
+      .then((response) => response.json())
+      .then((result) => {
+        if (result.success) {
+          // Replace textarea with updated text (preserve line breaks)
+          const formatted = newContent.replace(/\n/g, '<br>');
+          postContent.innerHTML = formatted;
+        } else {
+          alert('Error saving post');
         }
-    })
-    .catch(error => console.error("Error:", error));
+      })
+      .catch((error) => console.error('Error:', error));
+  };
+
+  // Handle Cancel
+  cancelButton.onclick = function () {
+    // Restore original text (with preserved line breaks)
+    const formatted = originalText.replace(/\n/g, '<br>');
+    postContent.innerHTML = formatted;
+  };
+}
+
+// Helper function to get CSRF token
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === name + '=') {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
 }
