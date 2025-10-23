@@ -29,7 +29,12 @@
               <strong>{{ post.author.username }}</strong>
             </a>
           </h6>
-          <p class="card-text">{{ post.content }}</p>
+          <p class="card-text" id="post-content-{{ post.id }}">{{ post.content }}</p>
+
+          {% if user == post.author %}
+            <button class="btn btn-sm btn-outline-secondary" onclick="editPost({{ post.id }})">Edit</button>
+          {% endif %}
+
           <small class="text-muted">
             {{ post.timestamp|date:"M d, Y H:i" }} · Likes: {{ post.likes.count }}
           </small>
