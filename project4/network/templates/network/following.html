@@ -18,9 +18,19 @@
           <button class="btn btn-sm btn-outline-secondary" onclick="editPost({{ post.id }})">Edit</button>
         {% endif %}
 
-        <small class="text-muted">
-          {{ post.timestamp|date:"M d, Y H:i" }} · Likes: {{ post.likes.count }}
-        </small>
+      <small class="text-muted">
+        {{ post.timestamp|date:"M d, Y H:i" }} ·
+        <span id="like-count-{{ post.id }}">{{ post.likes.count }}</span> Likes
+      </small>
+
+      {% if user.is_authenticated %}
+        <button
+          class="btn btn-sm {% if user in post.likes.all %}btn-success{% else %}btn-outline-success{% endif %}"
+          onclick="toggleLike({{ post.id }})"
+          id="like-btn-{{ post.id }}">
+          {% if user in post.likes.all %}Unlike{% else %}Like{% endif %}
+        </button>
+      {% endif %}
       </div>
     </div>
     {% endfor %}

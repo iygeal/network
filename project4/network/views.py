@@ -202,22 +202,6 @@ def following(request):
 @require_http_methods(["PUT"])
 def edit_post(request, post_id):
     # Parse JSON body
-    """
-    Edit a post by its ID.
-
-    Expects a JSON body containing the new post content.
-
-    Returns a JSON response containing the success status and the new post content if successful.
-
-    If the JSON body is invalid, returns a JSON response with an error status of 400 and an error message of "Invalid JSON".
-
-    If the new post content is empty, returns a JSON response with an error status of 400 and an error message of "Content cannot be empty".
-
-    If the post with the given ID does not exist, returns a JSON response with an error status of 404 and an error message of "Post not found".
-
-    If the current user is not the author of the post, returns a JSON response with an error status of 403 and an error message of "Not authorized".
-
-    """
     try:
         data = json.loads(request.body)
     except json.JSONDecodeError:
@@ -245,16 +229,39 @@ def edit_post(request, post_id):
 
 @login_required
 def toggle_like(request, post_id):
-    post = get_object_or_404(Post, id=post_id)
+    """
+    Toggles the like relation between the current user and the post with the given ID.
 
-    if request.user in post.likes.all():
-        post.likes.remove(request.user)
+    Returns a JSON response containing the success status, the new like status, and the new like count if successful.
+
+    If the request method is not PUT, returns a JSON response with an error status of 400 and an error message of "Invalid request method."
+
+    If the post with the given ID does not exist, returns a JSON response with an error status of 404 and an error message of "Post not found."
+
+    If the current user already likes the post, removes the like and returns a JSON response with the success status, the new like status of False, and the new like count.
+
+    If the current user does not like the post, adds the like and returns a JSON response with the success status, the new like status of True, and the new like count.
+
+    """
+    if request.method != "PUT":
+        return JsonResponse({"error": "Invalid request method."}, status=400)
+
+    try:
+        post = Post.objects.get(id=post_id)
+    except Post.DoesNotExist:
+        return JsonResponse({"error": "Post not found."}, status=404)
+
+    user = request.user
+
+    if user in post.likes.all():
+        post.likes.remove(user)
         liked = False
     else:
-        post.likes.add(request.user)
+        post.likes.add(user)
         liked = True
 
     return JsonResponse({
+        "success": True,
         "liked": liked,
-        "likes_count": post.likes.count()
+        "likes": post.likes.count()
     })
